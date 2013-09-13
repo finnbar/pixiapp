@@ -1,11 +1,21 @@
-grid = {}
+layers = {}
 currentCol = 1
 palette = {{255,255,255},{0,0,0},{0,255,0},{255,0,0},{0,0,255},{255,255,0},{0,255,255},{255,0,255},{180,180,180},{0,180,50},{50,0,180},{180,50,0},{50,50,0},{0,50,50}}
 
 require("libs.loveframes")
 
-size = 15
+size = 40
 div = 800/size
+olDiv = 800/size
+
+focus = true
+
+lay = 1
+
+up,down,left,right = false,false,false,false
+
+lOf = 0
+uOf = 0
 
 pressed = false
 
@@ -14,6 +24,61 @@ local sliderR = loveframes.Create("slider") --R
 local sliderG = loveframes.Create("slider") --G
 local sliderB = loveframes.Create("slider") --B
 local slidSize = loveframes.Create("slider")--size
+local pixSize = loveframes.Create("slider") --pixel size
+local list = loveframes.Create("list")
+local addLay = loveframes.Create("button")
+local offsetX = loveframes.Create("slider")
+local offsetY = loveframes.Create("slider")
+local resetOffset = loveframes.Create("button")
+local instructions = loveframes.Create("button")
+local saveF = loveframes.Create("textinput")
+local saveIt = loveframes.Create("button")
+local openIt = loveframes.Create("button")
+saveIt:SetPos(1050,500)
+saveIt:SetText(".pixl SAVE")
+openIt:SetPos(1050,525)
+openIt:SetText(".pixl OPEN")
+saveF:SetPos(850,500)
+saveF:SetText("THIS ISN'T WORKING YET :P")
+instructions:SetPos(850,450)
+instructions:SetText("HELP!")
+local tooltips = {}
+for e=1,7,1 do
+	tooltips[e] = loveframes.Create("tooltip")
+end
+frame = 0
+tooltips[1]:SetObject(sliderR)
+tooltips[1]:SetText("RGB Red Value (0-255)")
+tooltips[2]:SetObject(sliderG)
+tooltips[2]:SetText("RGB Green Value (0-255)")
+tooltips[3]:SetObject(sliderB)
+tooltips[3]:SetText("RGB Blue Value (0-255)")
+tooltips[4]:SetObject(slidSize)
+tooltips[4]:SetText("Size of the canvas (2x2 to 40x40)")
+tooltips[5]:SetObject(pixSize)
+tooltips[5]:SetText("Size of each pixel")
+tooltips[6]:SetObject(offsetX)
+tooltips[6]:SetText("Pixel x offset")
+tooltips[7]:SetObject(offsetY)
+tooltips[7]:SetText("Pixel y offset")
+resetOffset:SetPos(1010,290)
+resetOffset:SetSize(100,20)
+resetOffset:SetText("Reset offset")
+offsetX:SetPos(850,320)
+offsetX:SetWidth(320)
+offsetX:SetMinMax(-1,1)
+offsetX:SetValue(0)
+offsetY:SetPos(850,350)
+offsetY:SetWidth(320)
+offsetY:SetMinMax(-1,1)
+offsetY:SetValue(0)
+addLay:SetPos(850,725)
+addLay:SetText("Add Layer")
+list:SetPos(850,570)
+--first button
+layBut = {}
+layBut[1] = loveframes.Create("button")
+list:AddItem(layBut[1])
 sliderR:SetPos(850,100)
 sliderR:SetWidth(320)
 sliderR:SetMinMax(0,255)
@@ -29,18 +94,27 @@ sliderB:SetScrollable(true)
 slidSize:SetPos(850,400)
 slidSize:SetWidth(320)
 slidSize:SetMinMax(2,40)
-slidSize:SetValue(15)
+slidSize:SetValue(40)
+pixSize:SetPos(850,260)
+pixSize:SetWidth(320)
+pixSize:SetMinMax(0,div)
+pixSize:SetValue(div)
 
 function love.load()
-	setupTable()
+	setupTable(1)
 end
 
-function setupTable()
+function setupTable(layer)
+	if layers[layer] == nil then
+		table.insert(layers,{}) --layers[l]
+	end
+	local l = layer
 	for x=1,size,1 do
-		table.insert(grid,{})
+		table.insert(layers[l],{}) --layers[l][x] (LinuX!)
 		for y=1,size,1 do
-			if grid[x][y] == nil then
-				table.insert(grid[x],0)
+			table.insert(layers[l][x],{}) --layers[l][x][y] (LinuXY?)
+			for z=1,3,1 do
+				table.insert(layers[l][x][y],0) --layers[l][x][y][z] (LinuXYZ... ok forget it)
 			end
 		end
 	end
@@ -48,15 +122,49 @@ end
 
 function love.draw()
 	--call GUI elements
-	love.graphics.setColor(255,255,255)
-	love.graphics.print("R",860,80)
-	love.graphics.print("G",860,130)
-	love.graphics.print("B",860,180)
-	love.graphics.print("size",860,380)
-	love.graphics.print("Instructions:\nClick to place a pixel\nUse the sliders to make a new colour\nClick on any of the squares above the sliders\nto add that colour to the palette\nClick on a colour in the palette to use it\nsize is affected by slider\nenjoy!",860,450)
+	instructions.OnClick = function(obj)
+		focus = false
+		frame = loveframes.Create("frame")
+		frame:Center()
+		frame:SetName("Instructions:")
+		local text = {}
+		for t=1,4,1 do
+			text[t] = loveframes.Create("text",frame)
+		end
+		text[1]:SetPos(4,30)
+		text[1]:SetText("Left click to place a pixel, right-click to remove")
+		text[2]:SetPos(4,42)
+		text[2]:SetText("Edit colours with the sliders, as well as pixel")
+		text[3]:SetPos(4,54)
+		text[3]:SetText("size and offset. You can add layers with the")
+		text[4]:SetPos(4,66)
+		text[4]:SetText("\"add layer\" button. Enjoy! :)")
+	end
+	if type(frame) == "table" then frame.OnClose = function(obj) focus = true end end
+	for w=1,#layBut,1 do
+		layBut[w]:SetText("Layer " .. w)
+		layBut[w].OnClick = function(obj)
+			lay = w
+		end
+	end
+	addLay.OnClick = function(obj)  --ADD A NEW LAYER! <3
+		table.insert(layBut,loveframes.Create("button"))
+		list:AddItem(layBut[#layBut])
+		setupTable(#layBut)
+	end
+	resetOffset.OnClick = function(obj)
+		offsetX:SetValue(0)
+		offsetY:SetValue(0)
+	end
 	local tot = sliderR:GetValue() + sliderG:GetValue() + sliderB:GetValue()
 	love.graphics.setColor(766-tot,766-tot,766-tot)
 	love.graphics.rectangle("line",890,20,50,50)
+	love.graphics.print("R",860,80)
+	love.graphics.print("G",860,130)
+	love.graphics.print("B",860,180)
+	love.graphics.print("pixel size",860,240)
+	love.graphics.print("size",860,380)
+	love.graphics.print("pixel offset x and y",860,300)
 	love.graphics.setBackgroundColor(sliderR:GetValue(),sliderG:GetValue(),sliderB:GetValue())
 	love.graphics.setColor(sliderR:GetValue(),sliderB:GetValue(),sliderG:GetValue())
 	love.graphics.rectangle("fill",950,30,30,30)
@@ -72,45 +180,41 @@ function love.draw()
 		love.graphics.setColor(palette[p][1],palette[p][2],palette[p][3])
 		love.graphics.rectangle("fill",(p-1)*30,800,30,30)
 	end
-	for x=1,size,1 do
-		for y=1,size,1 do
-			if grid[x][y] > 0 then
-				local q = grid[x][y]
-				local a = 255-palette[currentCol][1]-palette[q][1]
-				local b = 255-palette[currentCol][2]-palette[q][2]
-				local c = 255-palette[currentCol][3]-palette[q][3]
-				if a<4 and a>-4 then
-					if b<4 and b>-4 then
-						if c<4 and c>-4 then
+	local counterLay = #layers
+	if counterLay==0 then counterLay=1 end
+	for l=1,counterLay,1 do
+		for x=1+lOf,size,1 do
+			for y=1+uOf,size,1 do
+				if layers[l][x][y][1] > 0 then
+					local q = layers[l][x][y][1]
+					local pSize = layers[l][x][y][2]
+					local off = layers[l][x][y][3]
+					if palette[currentCol] ~= nil and palette[q] ~= nil then
+						local a = sliderR:GetValue()==palette[q][1]
+						local b = sliderG:GetValue()==palette[q][2]
+						local c = sliderB:GetValue()==palette[q][3]
+						if a and b and c then
 							local tot = sliderR:GetValue() + sliderG:GetValue() + sliderB:GetValue()
 							love.graphics.setColor(766-tot,766-tot,766-tot)
-							love.graphics.rectangle("line",(x-1)*div,(y-1)*div,div,div)
+							love.graphics.rectangle("line",((x-1)*div+((div-pSize)/2))+(div*off[1]),((y-1)*div+((div-pSize)/2))-(div*off[2]),div-(div-pSize),div-(div-pSize))
 						else
 							love.graphics.setColor(palette[q][1],palette[q][2],palette[q][3])
-							love.graphics.rectangle("fill",(x-1)*div,(y-1)*div,div,div)
+							love.graphics.rectangle("fill",((x-1)*div+((div-pSize)/2))+(div*off[1]),((y-1)*div+((div-pSize)/2))-(div*off[2]),div-(div-pSize),div-(div-pSize))
 						end
-					else
-						love.graphics.setColor(palette[q][1],palette[q][2],palette[q][3])
-						love.graphics.rectangle("fill",(x-1)*div,(y-1)*div,div,div)
 					end
-				else
-				love.graphics.setColor(palette[q][1],palette[q][2],palette[q][3])
-				love.graphics.rectangle("fill",(x-1)*div,(y-1)*div,div,div)
 				end
 			end
 		end
 	end
 	local x=love.mouse.getX()
 	local y=love.mouse.getY()
-	x=math.ceil(x/div)-1
-	y=math.ceil(y/div)-1
+	x=math.floor(x/div)
+	y=math.floor(y/div)
 	love.graphics.setColor(255,255,255)
 	if currentCol > 0 then
 		love.graphics.setColor(palette[currentCol][1],palette[currentCol][2],palette[currentCol][3])
 	end
-	if x<size and y<size then
-		love.graphics.rectangle("line",x*div,y*div,div,div)
-	else
+	if x>=size or y>=size then
 		if y>(size-1) then
 			if x<size then
 				local x=love.mouse.getX()
@@ -119,14 +223,30 @@ function love.draw()
 				love.graphics.rectangle("line",(x-1)*30,800,30,30)
 			end
 		end
+	else
+		love.graphics.rectangle("line",x*div,y*div,div,div)
 	end
 	love.graphics.print(love.mouse.getX().."\n"..love.mouse.getY(),10,10)
 	loveframes.draw()
 	slidSize.OnValueChanged = function(obj)
 		size = obj:GetValue()
-		setupTable()
 	end
 	div = 800/size
+	pixSize:SetMinMax(0,div)
+	if div~=olDiv then
+		for l=1,#layers,1 do
+			for x=1+lOf,size,1 do
+				for y=1+uOf,size,1 do
+					if layers[l][x][y][2] == olDiv then
+						layers[l][x][y][2] = div
+					else
+						layers[l][x][y][2] = (layers[l][x][y][2]/olDiv)*div
+					end
+				end
+			end
+		end
+	end
+	olDiv = div
 end
 
 function love.update()
@@ -136,7 +256,11 @@ function love.update()
 		local y=math.ceil(love.mouse.getY()/div)
 		if pB == "l" then
 			if x<(size+1) and y<(size+1) and y>0 and x>0 then
-				grid[x][y] = currentCol
+				if layers[lay][x][y] ~= nil then
+					layers[lay][x][y][1] = currentCol
+					layers[lay][x][y][2] = pixSize:GetValue()
+					layers[lay][x][y][3] = {offsetX:GetValue(),offsetY:GetValue()}
+				end
 			else
 				local x2=love.mouse.getX()
 				local y2=love.mouse.getY()
@@ -183,23 +307,24 @@ function love.update()
 					sliderB:SetValue(255-sliderB:GetValue())
 					pressed = false
 				end
-				if y>(size-1) then
-					if x<size then
-						local x=math.ceil(love.mouse.getX()/30)
-						if palette[x] ~= nil then
-							currentCol = x
-							sliderR:SetValue(255-palette[x][1])
-							sliderG:SetValue(255-palette[x][2])
-							sliderB:SetValue(255-palette[x][3])
-						else
-							currentCol = 0
-						end
+			end
+			local x2=love.mouse.getX()
+			local y2=love.mouse.getY()
+			if y2>800 then
+				if x2<1000 then
+					local x=math.ceil(love.mouse.getX()/30)
+					if palette[x] ~= nil then
+						currentCol = x
+						sliderR:SetValue(255-palette[x][1])
+						sliderG:SetValue(255-palette[x][2])
+						sliderB:SetValue(255-palette[x][3])
 					end
 				end
 			end
 		else if pB == "r" then
 			if x<(size+1) and y<(size+1) then
-				grid[x][y] = 0
+				layers[lay][x][y][1] = 0
+				layers[lay][x][y][2] = 0
 			end
 		end
 	end
@@ -212,7 +337,17 @@ end
 
 function love.mousepressed(x,y,button)
 	loveframes.mousepressed(x,y,button)
-	pressed = true
-	pB = button
+	if focus then
+		pressed = true
+		pB = button
+	end
+end
+
+function love.keypressed(key, unicode)
+	loveframes.keypressed(key,unicode)
+end
+
+function love.keyreleased(key)
+	loveframes.keyreleased(key)
 end
 end
