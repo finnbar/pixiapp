@@ -1,0 +1,3 @@
+[submodule "libs/loveframes"]
+	path = libs/loveframes
+	url = https://github.com/NikolaiResokav/LoveFrames.git
