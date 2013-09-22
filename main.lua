@@ -4,11 +4,18 @@ palette = {{255,255,255},{0,0,0},{0,255,0},{255,0,0},{0,0,255},{255,255,0},{0,25
 
 require("libs.loveframes")
 
-size = 40
+size = 40  --grid size
 div = 800/size
 olDiv = 800/size
 
+ex,ey,ex2,ey2 = 0,0,0,0
+letgo = true
 focus = true
+
+func = 0
+--0: normal brush; 1,2: rectangle;
+
+backg = true
 
 lay = 1
 
@@ -34,13 +41,22 @@ local instructions = loveframes.Create("button")
 local saveF = loveframes.Create("textinput")
 local saveIt = loveframes.Create("button")
 local openIt = loveframes.Create("button")
+local paint = loveframes.Create("button")
+local rect = loveframes.Create("button")
+local settings = loveframes.Create("button")
+settings:SetPos(850,540)
+settings:SetText("settings")
+rect:SetPos(1030,450)
+rect:SetText("rectangle")
+paint:SetPos(940,450)
+paint:SetText("paint")
 saveIt:SetPos(1050,500)
 saveIt:SetText(".pixl SAVE")
 openIt:SetPos(1050,525)
 openIt:SetText(".pixl OPEN")
 saveF:SetPos(850,500)
 saveF:SetText("THIS ISN'T WORKING YET :P")
-instructions:SetPos(850,450)
+instructions:SetPos(940,540)
 instructions:SetText("HELP!")
 local tooltips = {}
 for e=1,7,1 do
@@ -72,11 +88,11 @@ offsetY:SetPos(850,350)
 offsetY:SetWidth(320)
 offsetY:SetMinMax(-1,1)
 offsetY:SetValue(0)
-addLay:SetPos(850,725)
+addLay:SetPos(850,745)
 addLay:SetText("Add Layer")
-list:SetPos(850,570)
+list:SetPos(850,590)
 --first button
-layBut = {}
+layBut = {} --butttons in the "add layer" dialouge
 layBut[1] = loveframes.Create("button")
 list:AddItem(layBut[1])
 sliderR:SetPos(850,100)
@@ -122,25 +138,58 @@ end
 
 function love.draw()
 	--call GUI elements
-	instructions.OnClick = function(obj)
-		focus = false
-		frame = loveframes.Create("frame")
-		frame:Center()
-		frame:SetName("Instructions:")
-		local text = {}
-		for t=1,4,1 do
-			text[t] = loveframes.Create("text",frame)
-		end
-		text[1]:SetPos(4,30)
-		text[1]:SetText("Left click to place a pixel, right-click to remove")
-		text[2]:SetPos(4,42)
-		text[2]:SetText("Edit colours with the sliders, as well as pixel")
-		text[3]:SetPos(4,54)
-		text[3]:SetText("size and offset. You can add layers with the")
-		text[4]:SetPos(4,66)
-		text[4]:SetText("\"add layer\" button. Enjoy! :)")
+	paint.OnClick = function(obj)
+		func = 0
 	end
-	if type(frame) == "table" then frame.OnClose = function(obj) focus = true end end
+	rect.OnClick = function(obj)
+		func = 1
+	end
+	instructions.OnClick = function(obj)  --instructions pane
+		if type(frame) ~= "table" then
+			focus = false
+			frame = loveframes.Create("frame")
+			frame:Center()
+			frame:SetName("Instructions:")
+			text = {}
+			for t=1,4,1 do
+				text[t] = loveframes.Create("text",frame)
+			end
+			text[1]:SetPos(4,30)
+			text[1]:SetText("Left click to place a pixel, right-click to remove")
+			text[2]:SetPos(4,42)
+			text[2]:SetText("Edit colours with the sliders, as well as pixel")
+			text[3]:SetPos(4,54)
+			text[3]:SetText("size and offset. You can add layers with the")
+			text[4]:SetPos(4,66)
+			text[4]:SetText("\"add layer\" button. Enjoy! :)")
+		end
+	end
+	settings.OnClick = function(obj)
+		if type(frame) ~= "table" then
+			focus = false
+			frame = loveframes.Create("frame")
+			frame:Center()
+			frame:SetName("settings")
+			sets = {}
+			sets[1] = loveframes.Create("text",frame)
+			sets[1]:SetPos(40,40)
+			sets[1]:SetText("Multicoloured Background")
+			sets[2] = loveframes.Create("checkbox",frame)
+			sets[2]:SetChecked(backg)
+			sets[2]:SetPos(15,35)
+		end
+	end
+	if type(frame) == "table" then
+		frame.OnClose = function(obj)
+			if sets ~= nil then
+				backg = sets[2]:GetChecked()
+			end
+			focus = true
+			frame = nil
+			sets = nil
+			text = nil
+		end
+	end
 	for w=1,#layBut,1 do
 		layBut[w]:SetText("Layer " .. w)
 		layBut[w].OnClick = function(obj)
@@ -153,19 +202,37 @@ function love.draw()
 		setupTable(#layBut)
 	end
 	resetOffset.OnClick = function(obj)
-		offsetX:SetValue(0)
+		offsetX:SetValue(0) --sets offset BACK TO 0
 		offsetY:SetValue(0)
 	end
 	local tot = sliderR:GetValue() + sliderG:GetValue() + sliderB:GetValue()
-	love.graphics.setColor(766-tot,766-tot,766-tot)
-	love.graphics.rectangle("line",890,20,50,50)
+	if backg then
+		love.graphics.setColor(766-tot,766-tot,766-tot)
+	else
+		love.graphics.setColor(255,255,255)
+	end
+	if func == 1 or func == 2 then
+		if ex>0 and ey>0 then
+			love.graphics.rectangle("line",(ex-1)*div,(ey-1)*div,10,10)
+			love.graphics.rectangle("line",((ex-1)*div)+10,((ey-1)*div)+10,10,10)
+		end
+	end
 	love.graphics.print("R",860,80)
 	love.graphics.print("G",860,130)
 	love.graphics.print("B",860,180)
 	love.graphics.print("pixel size",860,240)
 	love.graphics.print("size",860,380)
 	love.graphics.print("pixel offset x and y",860,300)
-	love.graphics.setBackgroundColor(sliderR:GetValue(),sliderG:GetValue(),sliderB:GetValue())
+	if backg then
+		love.graphics.rectangle("line",890,20,50,50)
+		love.graphics.setBackgroundColor(sliderR:GetValue(),sliderG:GetValue(),sliderB:GetValue())
+	else
+		local b,c,d = love.graphics.getColor()
+		love.graphics.setColor(sliderR:GetValue(),sliderG:GetValue(),sliderB:GetValue())
+		love.graphics.rectangle("fill",890,20,50,50)
+		love.graphics.setBackgroundColor(0,0,0)
+		love.graphics.setColor(b,c,d)
+	end
 	love.graphics.setColor(sliderR:GetValue(),sliderB:GetValue(),sliderG:GetValue())
 	love.graphics.rectangle("fill",950,30,30,30)
 	love.graphics.setColor(sliderG:GetValue(),sliderB:GetValue(),sliderR:GetValue())
@@ -176,7 +243,7 @@ function love.draw()
 	love.graphics.rectangle("fill",1070,30,30,30)
 	love.graphics.setColor(sliderB:GetValue(),sliderG:GetValue(),sliderR:GetValue())
 	love.graphics.rectangle("fill",1110,30,30,30)
-	for p=1,#palette,1 do
+	for p=1,#palette,1 do  --palette at bottom of screen
 		love.graphics.setColor(palette[p][1],palette[p][2],palette[p][3])
 		love.graphics.rectangle("fill",(p-1)*30,800,30,30)
 	end
@@ -230,10 +297,8 @@ function love.draw()
 	loveframes.draw()
 	slidSize.OnValueChanged = function(obj)
 		size = obj:GetValue()
-	end
-	div = 800/size
-	pixSize:SetMinMax(0,div)
-	if div~=olDiv then
+		div = 800/size
+		olDiv = div
 		for l=1,#layers,1 do
 			for x=1+lOf,size,1 do
 				for y=1+uOf,size,1 do
@@ -246,67 +311,60 @@ function love.draw()
 			end
 		end
 	end
-	olDiv = div
+	pixSize:SetMinMax(0,div)
 end
 
 function love.update()
 	loveframes.update()
 	if pressed then
+		--general colour selection
 		local x=math.ceil(love.mouse.getX()/div)
 		local y=math.ceil(love.mouse.getY()/div)
-		if pB == "l" then
-			if x<(size+1) and y<(size+1) and y>0 and x>0 then
-				if layers[lay][x][y] ~= nil then
-					layers[lay][x][y][1] = currentCol
-					layers[lay][x][y][2] = pixSize:GetValue()
-					layers[lay][x][y][3] = {offsetX:GetValue(),offsetY:GetValue()}
-				end
-			else
-				local x2=love.mouse.getX()
-				local y2=love.mouse.getY()
-				if x2>890 and x2<940 and y2>20 and y2<70 then
-					table.insert(palette,{sliderR:GetValue(),sliderG:GetValue(),sliderB:GetValue()})
-					currentCol = #palette
-					sliderR:SetValue(255-sliderR:GetValue())
-					sliderG:SetValue(255-sliderG:GetValue())
-					sliderB:SetValue(255-sliderB:GetValue())
-					pressed = false
-				elseif x2>950 and x2<980 and y2>30 and y2<60 then
-					table.insert(palette,{sliderR:GetValue(),sliderB:GetValue(),sliderG:GetValue()})
-					currentCol = #palette
-					sliderR:SetValue(255-sliderR:GetValue())
-					sliderG:SetValue(255-sliderG:GetValue())
-					sliderB:SetValue(255-sliderB:GetValue())
-					pressed = false
-				elseif x2>990 and x2<1020 and y2>30 and y2<60 then
-					table.insert(palette,{sliderG:GetValue(),sliderB:GetValue(),sliderR:GetValue()})
-					currentCol = #palette
-					sliderR:SetValue(255-sliderR:GetValue())
-					sliderG:SetValue(255-sliderG:GetValue())
-					sliderB:SetValue(255-sliderB:GetValue())
-					pressed = false
-				elseif x2>1030 and x2<1060 and y2>30 and y2<60 then
-					table.insert(palette,{sliderG:GetValue(),sliderR:GetValue(),sliderB:GetValue()})
-					currentCol = #palette
-					sliderR:SetValue(255-sliderR:GetValue())
-					sliderG:SetValue(255-sliderG:GetValue())
-					sliderB:SetValue(255-sliderB:GetValue())
-					pressed = false
-				elseif x2>1070 and x2<1110 and y2>30 and y2<60 then
-					table.insert(palette,{sliderB:GetValue(),sliderR:GetValue(),sliderG:GetValue()})
-					currentCol = #palette
-					sliderR:SetValue(255-sliderR:GetValue())
-					sliderG:SetValue(255-sliderG:GetValue())
-					sliderB:SetValue(255-sliderB:GetValue())
-					pressed = false
-				elseif x2>1120 and x2<1150 and y2>30 and y2<60 then
-					table.insert(palette,{sliderB:GetValue(),sliderG:GetValue(),sliderR:GetValue()})
-					currentCol = #palette
-					sliderR:SetValue(255-sliderR:GetValue())
-					sliderG:SetValue(255-sliderG:GetValue())
-					sliderB:SetValue(255-sliderB:GetValue())
-					pressed = false
-				end
+		if not (x<(size+1) and y<(size+1) and y>0 and x>0) then
+			local x2=love.mouse.getX()
+			local y2=love.mouse.getY()
+			if x2>890 and x2<940 and y2>20 and y2<70 then
+				table.insert(palette,{sliderR:GetValue(),sliderG:GetValue(),sliderB:GetValue()})
+				currentCol = #palette
+				sliderR:SetValue(255-sliderR:GetValue())
+				sliderG:SetValue(255-sliderG:GetValue())
+				sliderB:SetValue(255-sliderB:GetValue())
+				pressed = false
+			elseif x2>950 and x2<980 and y2>30 and y2<60 then
+				table.insert(palette,{sliderR:GetValue(),sliderB:GetValue(),sliderG:GetValue()})
+				currentCol = #palette
+				sliderR:SetValue(255-sliderR:GetValue())
+				sliderG:SetValue(255-sliderG:GetValue())
+				sliderB:SetValue(255-sliderB:GetValue())
+				pressed = false
+			elseif x2>990 and x2<1020 and y2>30 and y2<60 then
+				table.insert(palette,{sliderG:GetValue(),sliderB:GetValue(),sliderR:GetValue()})
+				currentCol = #palette
+				sliderR:SetValue(255-sliderR:GetValue())
+				sliderG:SetValue(255-sliderG:GetValue())
+				sliderB:SetValue(255-sliderB:GetValue())
+				pressed = false
+			elseif x2>1030 and x2<1060 and y2>30 and y2<60 then
+				table.insert(palette,{sliderG:GetValue(),sliderR:GetValue(),sliderB:GetValue()})
+				currentCol = #palette
+				sliderR:SetValue(255-sliderR:GetValue())
+				sliderG:SetValue(255-sliderG:GetValue())
+				sliderB:SetValue(255-sliderB:GetValue())
+				pressed = false
+			elseif x2>1070 and x2<1110 and y2>30 and y2<60 then
+				table.insert(palette,{sliderB:GetValue(),sliderR:GetValue(),sliderG:GetValue()})
+				currentCol = #palette
+				sliderR:SetValue(255-sliderR:GetValue())
+				sliderG:SetValue(255-sliderG:GetValue())
+				sliderB:SetValue(255-sliderB:GetValue())
+				pressed = false
+			elseif x2>1120 and x2<1150 and y2>30 and y2<60 then
+				table.insert(palette,{sliderB:GetValue(),sliderG:GetValue(),sliderR:GetValue()})
+				currentCol = #palette
+				sliderR:SetValue(255-sliderR:GetValue())
+				sliderG:SetValue(255-sliderG:GetValue())
+				sliderB:SetValue(255-sliderB:GetValue())
+				pressed = false
 			end
 			local x2=love.mouse.getX()
 			local y2=love.mouse.getY()
@@ -321,11 +379,64 @@ function love.update()
 					end
 				end
 			end
-		else if pB == "r" then
-			if x<(size+1) and y<(size+1) then
-				layers[lay][x][y][1] = 0
-				layers[lay][x][y][2] = 0
+		end
+		if func == 0 then
+			local x=math.ceil(love.mouse.getX()/div)
+			local y=math.ceil(love.mouse.getY()/div)
+			if pB == "l" then
+				if x<(size+1) and y<(size+1) and y>0 and x>0 then
+					if layers[lay][x][y] ~= nil then
+						layers[lay][x][y][1] = currentCol
+						layers[lay][x][y][2] = pixSize:GetValue()
+						layers[lay][x][y][3] = {offsetX:GetValue(),offsetY:GetValue()}
+					end
+				end
+			elseif pB == "r" then
+				if x<(size+1) and y<(size+1) then
+					layers[lay][x][y][1] = 0
+					layers[lay][x][y][2] = 0
+				end
 			end
+		elseif func == 1 then
+			if pB == "l" then
+				if letgo then
+					ex = math.ceil(love.mouse.getX()/div)
+					ey = math.ceil(love.mouse.getY()/div)
+					if ex<size and ey<size then workaround = true else workaround = false end
+				end
+			end
+		elseif func == 2 then
+			if pB == "l" then
+				ex2 = math.ceil(love.mouse.getX()/div)
+				ey2 = math.ceil(love.mouse.getY()/div)
+				if ex2<size and ey2<size then
+					if ex>ex2 then
+						x1 = ex2
+						x2 = ex
+					else
+						x1 = ex
+						x2 = ex2
+					end
+					if ey>ey2 then
+						y1 = ey2
+						y2 = ey
+					else
+						y1 = ey
+						y2 = ey2
+					end
+					for x=x1,x2,1 do
+						for y=y1,y2,1 do
+							layers[lay][x][y][1] = currentCol
+							layers[lay][x][y][2] = pixSize:GetValue()
+							layers[lay][x][y][3] = {offsetX:GetValue(),offsetY:GetValue()}
+						end
+					end
+					func = 1
+					workaround = false
+					ex,ey,ex2,ey2 = 0,0,0,0
+					letgo = false
+				end
+			elseif pB == "r" then func = 1 end
 		end
 	end
 end
@@ -333,6 +444,11 @@ end
 function love.mousereleased(x, y, button)
 	loveframes.mousereleased(x,y,button)
 	pressed = false
+	if func == 1 and workaround then
+		func = 2
+		workaround = false
+	end --second part of rectangle
+	letgo = true
 end
 
 function love.mousepressed(x,y,button)
@@ -349,5 +465,4 @@ end
 
 function love.keyreleased(key)
 	loveframes.keyreleased(key)
-end
 end
