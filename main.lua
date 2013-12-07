@@ -3,6 +3,7 @@ currentCol = 1
 palette = {{255,255,255},{0,0,0},{0,255,0},{255,0,0},{0,0,255},{255,255,0},{0,255,255},{255,0,255},{180,180,180},{0,180,50},{50,0,180},{180,50,0},{50,50,0},{0,50,50}}
 
 require("libs.loveframes")
+require "tserial"
 
 size = 40  --grid size
 div = 800/size
@@ -204,6 +205,13 @@ function love.draw()
 	resetOffset.OnClick = function(obj)
 		offsetX:SetValue(0) --sets offset BACK TO 0
 		offsetY:SetValue(0)
+	end
+	saveIt.OnClick = function(obj)
+		local file = Tserial.pack(layers,nil,false)
+		love.filesystem.write(saveF:GetValue()..".pixl",file,all)
+	end
+	openIt.OnClick = function(obj)
+		layers = Tserial.unpack(love.filesystem.read(saveF:GetValue()..".pixl",all),true)
 	end
 	local tot = sliderR:GetValue() + sliderG:GetValue() + sliderB:GetValue()
 	if backg then
